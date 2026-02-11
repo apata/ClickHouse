@@ -88,17 +88,32 @@ bool HTTPServerRequest::checkPeerConnected() const
     try
     {
         char b;
-        if (!socket->receiveBytes(&b, 1, MSG_DONTWAIT | MSG_PEEK))
+        int bytes_received = socket->receiveBytes(&b, 1, MSG_DONTWAIT | MSG_PEEK);
+        if (bytes_received == 0)
+        {
+            LOG_WARNING(getLogger("HTTPServerRequest"), "did not receive any bytes, peer not connected");
             return false;
+        }
+        if (bytes_received == -1)
+        {
+            LOG_WARNING(getLogger("HTTPServerRequest"), "received value -1, no messages available at socket, but maybe peer is connected");
+        }
+        else
+        {
+            LOG_WARNING(
+                getLogger("HTTPServerRequest"), "received {} bytes '{}', assuming peer is connected", bytes_received, static_cast<int>(b));
+        }
     }
     catch (Poco::TimeoutException &) // NOLINT(bugprone-empty-catch)
     {
+        LOG_WARNING(getLogger("HTTPServerRequest"), "got timeoutexception, assuming peer is connected");
     }
     catch (...)
     {
+        LOG_WARNING(getLogger("HTTPServerRequest"), "got other exception, peer not connected");
         return false;
     }
-
+    
     return true;
 }
 
